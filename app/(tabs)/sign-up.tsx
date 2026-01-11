@@ -1,7 +1,7 @@
 import { View } from "react-native";
 import { Text } from "react-native-paper";
 
-export default function Index() {
+export default function signUp() {
   return (
     <View
       style={{
@@ -10,7 +10,7 @@ export default function Index() {
         alignItems: "center",
       }}
     >
-      <Text>Edit app/index.tsx to edit this screen.</Text>
+      <Text>Edit app/sign-up.tsx to edit this screen.</Text>
     </View>
   );
 }
