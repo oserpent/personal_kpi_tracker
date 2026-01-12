@@ -1,3 +1,5 @@
+import { useAuth } from "@/util/auth";
+import { Link } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, View } from "react-native";
 import { Button, Text, TextInput } from "react-native-paper";
@@ -5,16 +7,12 @@ import { Button, Text, TextInput } from "react-native-paper";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
-  const handleAuth = async (email, password) => {
-    // handle auth
-    return;
-  };
+  const { login } = useAuth()!;
 
   return (
     <KeyboardAvoidingView>
       <View>
-        <Text variant="displaySmall">Sign In Here!</Text>
+        <Text variant="displaySmall">Login Here!</Text>
         <TextInput
           label="Email"
           autoCapitalize="none"
@@ -30,7 +28,10 @@ export default function Login() {
           secureTextEntry
           onChangeText={(newPassword) => setPassword(newPassword)}
         />
-        <Button onPress={() => handleAuth(email, password)}>Sign In</Button>
+        <Button onPress={() => login(email, password)}>Login</Button>
+        <Link replace href="/sign-up">
+          Don't have an account? Sign up here
+        </Link>
       </View>
     </KeyboardAvoidingView>
   );
