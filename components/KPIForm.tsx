@@ -4,9 +4,9 @@ import { useState } from "react";
 import { KeyboardAvoidingView, View } from "react-native";
 import { Button, Text, TextInput } from "react-native-paper";
 import RNPickerSelect from "react-native-picker-select";
+import { quantifier } from "./KPIDashboard";
 
 export default function KPIForm() {
-
   const { user } = useAuth()!;
 
   const [kpiName, setKPIName] = useState<string>("");
