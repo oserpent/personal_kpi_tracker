@@ -1,4 +1,5 @@
 import { useAuth } from "@/util/auth";
+import { supabase } from "@/util/supabase-client";
 import { useState } from "react";
 import { KeyboardAvoidingView, View } from "react-native";
 import { Button, Text, TextInput } from "react-native-paper";
@@ -15,15 +16,30 @@ export default function Index() {
   const [kpiQuantifier, setKPIQuantifier] = useState<quantifier>(null);
   const [error, setError] = useState<string>("");
 
-  const createKPI = async (kpiName, kpiQuantity, kpiQuantifier) => {
+  const createKPI = async (
+    kpiName: string,
+    kpiQuantity: number,
+    kpiQuantifier: quantifier
+  ) => {
     if (kpiName === "" || kpiQuantity === 0 || kpiQuantifier === null) {
       setError("A required field is empty");
       return;
     }
     //createKPI
+    const { error } = await supabase.from("kpi").insert({
+      user_id: user?.id,
+      name: kpiName,
+      quantity: kpiQuantity,
+      quantifier: kpiQuantifier,
+    });
+    if (error) {
+      setError(error.message);
+      return;
+    }
     setKPIName("");
     setKPIQuantity(0);
     setKPIQuantifier(null);
+    setError("");
   };
 
   return loading || !user ? (
@@ -48,7 +64,6 @@ export default function Index() {
             label="Quantity"
             autoCapitalize="none"
             mode="outlined"
-            secureTextEntry
             onChangeText={(newKPIQuantity) =>
               setKPIQuantity(Number(newKPIQuantity))
             }
