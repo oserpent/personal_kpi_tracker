@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { FlatList, StyleSheet, View } from "react-native";
 import Collapsible from "react-native-collapsible";
 import { Button, Text } from "react-native-paper";
-import KPIForm from "./kpiForm";
+import KPIForm from "./KPIForm";
 
 export type quantifier = "minutes" | "hours" | "quantity" | null;
 
@@ -27,15 +27,18 @@ interface kpiCardPropsType extends kpiType {
   kpiCompletedId: string | null;
 }
 
+const utcMidnight = () => {
+  const dateToday = new Date().toLocaleDateString();
+  const [month, day, year] = dateToday.split("/").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+};
+
 export default function KPIDashboard() {
   const { user } = useAuth()!;
   const [collapsed, setCollapsed] = useState<boolean>(true);
   const [kpis, setKPIs] = useState<kpiDBType[]>([]);
   const [error, setError] = useState<string>("");
-  const [date, setDate] = useState(() => {
-    const now = new Date();
-    return now;
-  });
+  const [date, setDate] = useState(utcMidnight);
   useEffect(() => {
     fetchKPIs();
 
@@ -73,7 +76,7 @@ export default function KPIDashboard() {
       supabase.removeChannel(channel1);
       supabase.removeChannel(channel2);
     };
-  }, []);
+  }, [date, user]);
 
   const fetchKPIs = async () => {
     if (!user) {
@@ -91,8 +94,8 @@ export default function KPIDashboard() {
         kpi
         left join kpi_completion on kpi.id = kpi_completion.kpi_id
         where
-        kpi.user_id = 5
-        and kpi_completion.datetime = 5
+        kpi.user_id = {user.id}
+        and kpi_completion.completed_at = {date.toISOString().split("T")[0]}
     */
     const { data, error } = await supabase
       .from("kpi")
@@ -108,8 +111,8 @@ export default function KPIDashboard() {
         )
         `
       )
-      .eq("user_id", user.id);
-    //   .eq("kpi_completion.datetime", 5);
+      .eq("user_id", user.id)
+      .eq("kpi_completion.completed_at", date.toISOString().split("T")[0]);
     if (error) {
       setError(error.message);
       return;
@@ -161,7 +164,7 @@ export default function KPIDashboard() {
         ({ error } = await supabase.from("kpi_completion").insert({
           user_id: user?.id,
           kpi_id: kpi_id,
-          completed_at: new Date(),
+          completed_at: date,
           quantity_completed: newQuantityCompleted,
         }));
       } else {
@@ -214,6 +217,7 @@ export default function KPIDashboard() {
             setDate(newDate);
           }
         }}
+        timeZoneName={"UTC"}
       />
       <Button onPress={() => setCollapsed((prevCollapsed) => !prevCollapsed)}>
         Add KPI
