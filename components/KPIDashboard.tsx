@@ -15,19 +15,19 @@ export type kpiType = {
   quantifier: quantifier;
 };
 
-interface kpiDBType extends kpiType {
+export interface kpiDBType extends kpiType {
   id: number;
   //   to finish kpi_completion type later
   kpi_completion: any;
 }
 
-interface processedKPIType extends kpiType {
+export interface processedKPIType extends kpiType {
   id: number;
   quantityCompleted: number;
   kpiCompletedId: string | null;
 }
 
-const utcMidnight = () => {
+export const utcMidnight = () => {
   const dateToday = new Date().toLocaleDateString();
   const [month, day, year] = dateToday.split("/").map(Number);
   return new Date(Date.UTC(year, month - 1, day));
@@ -234,7 +234,6 @@ export default function KPIDashboard() {
       const partialKPIIndex = kpi.quantityCompleted / kpi.quantity;
       sum += partialKPIIndex < 1 ? partialKPIIndex : 1;
     }
-    console.log(sum / kpis.length);
     return sum / kpis.length;
   };
 
