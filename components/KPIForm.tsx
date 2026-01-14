@@ -48,6 +48,7 @@ export default function KPIForm() {
           autoCapitalize="none"
           mode="outlined"
           onChangeText={(newKPIName) => setKPIName(newKPIName)}
+          value={kpiName}
         />
         <TextInput
           label="Quantity"
@@ -56,6 +57,7 @@ export default function KPIForm() {
           onChangeText={(newKPIQuantity) =>
             setKPIQuantity(Number(newKPIQuantity))
           }
+          value={kpiQuantity.toString()}
         />
         <RNPickerSelect
           onValueChange={(newKPIQuantifier) => {

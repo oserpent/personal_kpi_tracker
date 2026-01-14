@@ -4,7 +4,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useEffect, useState } from "react";
 import { FlatList, StyleSheet, View } from "react-native";
 import Collapsible from "react-native-collapsible";
-import { Button, Text } from "react-native-paper";
+import { Button, Text, TextInput } from "react-native-paper";
 import KPIForm from "./KPIForm";
 
 export type quantifier = "minutes" | "hours" | "quantity" | null;
@@ -130,53 +130,63 @@ export default function KPIDashboard() {
     quantityCompleted,
     kpiCompletedId,
   }: kpiCardPropsType) => {
-    const decrement = async () => {
-      if (kpiCompletedId) {
-        const newQuantityCompleted = Number.isInteger(quantityCompleted)
-          ? quantityCompleted - 1
-          : Math.floor(quantityCompleted);
-        if (newQuantityCompleted === 0) {
-          // if new quantity drops to zero, delete it instead of updating it
-          await supabase
-            .from("kpi_completion")
-            .delete()
-            .eq("id", kpiCompletedId);
-        } else {
-          // update if there exists a kpi_completion row already
-          const { error } = await supabase
-            .from("kpi_completion")
-            .update({ quantity_completed: newQuantityCompleted })
-            .eq("id", kpiCompletedId);
-          if (error) {
-            setError(error.message);
+    const [quantityCompletedDraft, setQuantityCompletedDraft] =
+      useState<string>(quantityCompleted.toString());
+
+    const changeQuantityCompleted = async (newQuantityCompleted: number) => {
+      let error;
+      if (newQuantityCompleted < quantityCompleted) {
+        if (kpiCompletedId) {
+          if (newQuantityCompleted <= 0) {
+            // if new quantity drops to zero, delete it instead of updating it
+            await supabase
+              .from("kpi_completion")
+              .delete()
+              .eq("id", kpiCompletedId);
+          } else {
+            // update if there exists a kpi_completion row already
+            ({ error } = await supabase
+              .from("kpi_completion")
+              .update({ quantity_completed: newQuantityCompleted })
+              .eq("id", kpiCompletedId));
           }
         }
-      }
-    };
-
-    const increment = async () => {
-      let error;
-      const newQuantityCompleted = Number.isInteger(quantityCompleted)
-        ? quantityCompleted + 1
-        : Math.ceil(quantityCompleted);
-      if (!kpiCompletedId) {
-        // create if there does not exist a kpi_completion_row
-        ({ error } = await supabase.from("kpi_completion").insert({
-          user_id: user?.id,
-          kpi_id: kpi_id,
-          completed_at: date,
-          quantity_completed: newQuantityCompleted,
-        }));
       } else {
-        // update if there exists a kpi_completion row already
-        ({ error } = await supabase
-          .from("kpi_completion")
-          .update({ quantity_completed: newQuantityCompleted })
-          .eq("id", kpiCompletedId));
+        if (newQuantityCompleted > quantityCompleted) {
+          if (!kpiCompletedId) {
+            // create if there does not exist a kpi_completion_row
+            ({ error } = await supabase.from("kpi_completion").insert({
+              user_id: user?.id,
+              kpi_id: kpi_id,
+              completed_at: date,
+              quantity_completed: newQuantityCompleted,
+            }));
+          } else {
+            // update if there exists a kpi_completion row already
+            ({ error } = await supabase
+              .from("kpi_completion")
+              .update({ quantity_completed: newQuantityCompleted })
+              .eq("id", kpiCompletedId));
+          }
+        }
       }
       if (error) {
         setError(error.message);
       }
+    };
+
+    const decrement = () => {
+      const newQuantityCompleted = Number.isInteger(quantityCompleted)
+        ? quantityCompleted - 1
+        : Math.floor(quantityCompleted);
+      changeQuantityCompleted(newQuantityCompleted);
+    };
+
+    const increment = () => {
+      const newQuantityCompleted = Number.isInteger(quantityCompleted)
+        ? quantityCompleted + 1
+        : Math.ceil(quantityCompleted);
+      changeQuantityCompleted(newQuantityCompleted);
     };
 
     return (
@@ -185,7 +195,21 @@ export default function KPIDashboard() {
         <View>
           <Text>{name}</Text>
           <Text>
-            {quantityCompleted}/{quantity} {quantifier}
+            <TextInput
+              value={quantityCompletedDraft}
+              onSubmitEditing={({
+                nativeEvent: { text: newQuantityCompletedString },
+              }) => {
+                changeQuantityCompleted(Number(newQuantityCompletedString));
+              }}
+              onChangeText={(newQuantityCompletedDraft) =>
+                setQuantityCompletedDraft(newQuantityCompletedDraft)
+              }
+              onBlur={() => {
+                setQuantityCompletedDraft(quantityCompleted.toString());
+              }}
+            />
+            /{quantity} {quantifier}
           </Text>
         </View>
         <Button onPress={increment}>+</Button>
