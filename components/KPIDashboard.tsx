@@ -21,7 +21,7 @@ interface kpiDBType extends kpiType {
   kpi_completion: any;
 }
 
-interface kpiCardPropsType extends kpiType {
+interface processedKPIType extends kpiType {
   id: number;
   quantityCompleted: number;
   kpiCompletedId: string | null;
@@ -129,7 +129,7 @@ export default function KPIDashboard() {
     quantifier,
     quantityCompleted,
     kpiCompletedId,
-  }: kpiCardPropsType) => {
+  }: processedKPIType) => {
     const [quantityCompletedDraft, setQuantityCompletedDraft] =
       useState<string>(quantityCompleted.toString());
 
@@ -217,20 +217,34 @@ export default function KPIDashboard() {
     );
   };
 
+  const processedKPIs: processedKPIType[] = kpis.map((item) => {
+    const { kpi_completion, ...kpi } = item;
+    let quantityCompleted = 0;
+    let kpiCompletedId = null;
+    if (kpi_completion.length !== 0) {
+      quantityCompleted = kpi_completion[0].quantity_completed;
+      kpiCompletedId = kpi_completion[0].id;
+    }
+    return { ...kpi, quantityCompleted, kpiCompletedId };
+  });
+
+  const getKPIIndex = (kpis: processedKPIType[]) => {
+    let sum = 0;
+    for (let kpi of kpis) {
+      const partialKPIIndex = kpi.quantityCompleted / kpi.quantity;
+      sum += partialKPIIndex < 1 ? partialKPIIndex : 1;
+    }
+    console.log(sum / kpis.length);
+    return sum / kpis.length;
+  };
+
   return (
     <View>
+      <Text>KPI Index: {getKPIIndex(processedKPIs).toFixed(2)}</Text>
       <FlatList
-        data={kpis}
+        data={processedKPIs}
         renderItem={({ item }) => {
-          const { kpi_completion, ...kpi } = item;
-          let quantityCompleted = 0;
-          let kpiCompletedId = null;
-          if (kpi_completion.length !== 0) {
-            quantityCompleted = kpi_completion[0].quantity_completed;
-            kpiCompletedId = kpi_completion[0].id;
-          }
-          const kpiCardProps = { ...kpi, quantityCompleted, kpiCompletedId };
-          return <KPICard {...kpiCardProps} />;
+          return <KPICard {...item} />;
         }}
         keyExtractor={(item) => item.id.toString()}
       />
