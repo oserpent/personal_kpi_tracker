@@ -1,10 +1,11 @@
 import { useAuth } from "@/util/auth";
 import { supabase } from "@/util/supabase-client";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useEffect, useState } from "react";
-import { FlatList, StyleSheet, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { StyleSheet, View } from "react-native";
 import Collapsible from "react-native-collapsible";
-import { Button, Text, TextInput } from "react-native-paper";
+import { Button, Text, useTheme } from "react-native-paper";
+import KPICard from "./KPICard";
 import KPIForm from "./KPIForm";
 
 export type quantifier = "minutes" | "hours" | "quantity" | null;
@@ -39,6 +40,7 @@ export default function KPIDashboard() {
   const [kpis, setKPIs] = useState<kpiDBType[]>([]);
   const [error, setError] = useState<string>("");
   const [date, setDate] = useState(utcMidnight);
+  const { colors } = useTheme();
   useEffect(() => {
     fetchKPIs();
 
@@ -53,7 +55,7 @@ export default function KPIDashboard() {
         },
         (payload) => {
           fetchKPIs();
-        }
+        },
       )
       .subscribe();
 
@@ -68,7 +70,7 @@ export default function KPIDashboard() {
         },
         (payload) => {
           fetchKPIs();
-        }
+        },
       )
       .subscribe();
 
@@ -109,7 +111,7 @@ export default function KPIDashboard() {
           id,
           quantity_completed
         )
-        `
+        `,
       )
       .eq("user_id", user.id)
       .eq("kpi_completion.completed_at", date.toISOString().split("T")[0]);
@@ -120,101 +122,6 @@ export default function KPIDashboard() {
     if (data) {
       setKPIs(data);
     }
-  };
-
-  const KPICard = ({
-    id: kpi_id,
-    name,
-    quantity,
-    quantifier,
-    quantityCompleted,
-    kpiCompletedId,
-  }: processedKPIType) => {
-    const [quantityCompletedDraft, setQuantityCompletedDraft] =
-      useState<string>(quantityCompleted.toString());
-
-    const changeQuantityCompleted = async (newQuantityCompleted: number) => {
-      let error;
-      if (newQuantityCompleted < quantityCompleted) {
-        if (kpiCompletedId) {
-          if (newQuantityCompleted <= 0) {
-            // if new quantity drops to zero, delete it instead of updating it
-            await supabase
-              .from("kpi_completion")
-              .delete()
-              .eq("id", kpiCompletedId);
-          } else {
-            // update if there exists a kpi_completion row already
-            ({ error } = await supabase
-              .from("kpi_completion")
-              .update({ quantity_completed: newQuantityCompleted })
-              .eq("id", kpiCompletedId));
-          }
-        }
-      } else {
-        if (newQuantityCompleted > quantityCompleted) {
-          if (!kpiCompletedId) {
-            // create if there does not exist a kpi_completion_row
-            ({ error } = await supabase.from("kpi_completion").insert({
-              user_id: user?.id,
-              kpi_id: kpi_id,
-              completed_at: date,
-              quantity_completed: newQuantityCompleted,
-            }));
-          } else {
-            // update if there exists a kpi_completion row already
-            ({ error } = await supabase
-              .from("kpi_completion")
-              .update({ quantity_completed: newQuantityCompleted })
-              .eq("id", kpiCompletedId));
-          }
-        }
-      }
-      if (error) {
-        setError(error.message);
-      }
-    };
-
-    const decrement = () => {
-      const newQuantityCompleted = Number.isInteger(quantityCompleted)
-        ? quantityCompleted - 1
-        : Math.floor(quantityCompleted);
-      changeQuantityCompleted(newQuantityCompleted);
-    };
-
-    const increment = () => {
-      const newQuantityCompleted = Number.isInteger(quantityCompleted)
-        ? quantityCompleted + 1
-        : Math.ceil(quantityCompleted);
-      changeQuantityCompleted(newQuantityCompleted);
-    };
-
-    return (
-      <View style={styles.kpiCard}>
-        <Button onPress={decrement}>-</Button>
-        <View>
-          <Text>{name}</Text>
-          <Text>
-            <TextInput
-              value={quantityCompletedDraft}
-              onSubmitEditing={({
-                nativeEvent: { text: newQuantityCompletedString },
-              }) => {
-                changeQuantityCompleted(Number(newQuantityCompletedString));
-              }}
-              onChangeText={(newQuantityCompletedDraft) =>
-                setQuantityCompletedDraft(newQuantityCompletedDraft)
-              }
-              onBlur={() => {
-                setQuantityCompletedDraft(quantityCompleted.toString());
-              }}
-            />
-            /{quantity} {quantifier}
-          </Text>
-        </View>
-        <Button onPress={increment}>+</Button>
-      </View>
-    );
   };
 
   const processedKPIs: processedKPIType[] = kpis.map((item) => {
@@ -237,39 +144,94 @@ export default function KPIDashboard() {
     return sum / kpis.length;
   };
 
+  const styles = StyleSheet.create({
+    dashboardBox: {
+      alignItems: "center",
+    },
+    kpiIndexBox: {
+      alignItems: "center",
+      paddingHorizontal: 15,
+      paddingVertical: 5,
+      borderRadius: 50,
+    },
+    kpiCard: {
+      flexDirection: "row",
+      justifyContent: "center",
+    },
+    kpiText: {
+      fontSize: 25,
+    },
+    kpiBad: {
+      backgroundColor: "#ff6b61",
+    },
+    kpiOk: {
+      backgroundColor: "#fdd140",
+    },
+    kpiGood: {
+      backgroundColor: "#8dfd6b",
+    },
+    kpiBadText: {
+      color: "#c40e01",
+    },
+    kpiOkText: {
+      color: "#a78000",
+    },
+    kpiGoodText: {
+      color: "#25a000",
+    },
+  });
+
+  const kpiIndex = getKPIIndex(processedKPIs);
+  let kpiQualityStyle = styles.kpiBad;
+  let kpiQualityTextStyle = styles.kpiBadText;
+  if (kpiIndex >= 0 && kpiIndex <= 0.3) {
+    kpiQualityStyle = styles.kpiBad;
+    kpiQualityTextStyle = styles.kpiBadText;
+  } else if (kpiIndex > 0.3 && kpiIndex < 0.7) {
+    kpiQualityStyle = styles.kpiOk;
+    kpiQualityTextStyle = styles.kpiOkText;
+  } else if (kpiIndex >= 0.7 && kpiIndex <= 1) {
+    kpiQualityStyle = styles.kpiGood;
+    kpiQualityTextStyle = styles.kpiGoodText;
+  }
+
   return (
-    <View>
-      <Text>KPI Index: {getKPIIndex(processedKPIs).toFixed(2)}</Text>
-      <FlatList
-        data={processedKPIs}
-        renderItem={({ item }) => {
-          return <KPICard {...item} />;
-        }}
-        keyExtractor={(item) => item.id.toString()}
-      />
-      <DateTimePicker
-        value={date}
-        onChange={(_, newDate) => {
-          if (newDate) {
-            setDate(newDate);
-          }
-        }}
-        timeZoneName={"UTC"}
-      />
-      <Button onPress={() => setCollapsed((prevCollapsed) => !prevCollapsed)}>
-        Add KPI
-      </Button>
-      {error && <Text>{error}</Text>}
+    <>
+      <View style={styles.dashboardBox}>
+        <View style={[styles.kpiIndexBox, kpiQualityStyle]}>
+          <Text style={[styles.kpiText, kpiQualityTextStyle]}>
+            {kpiIndex.toFixed(2)}
+          </Text>
+        </View>
+        <View>
+          {processedKPIs.map((item) => (
+            <KPICard {...item} date={date} setError={setError} key={item.id} />
+          ))}
+        </View>
+        {/* <FlatList
+          data={processedKPIs}
+          renderItem={({ item }) => {
+            return <KPICard {...item} date={date} setError={setError} />;
+          }}
+          keyExtractor={(item) => item.id.toString()}
+        /> */}
+        <DateTimePicker
+          value={date}
+          onChange={(_, newDate) => {
+            if (newDate) {
+              setDate(newDate);
+            }
+          }}
+          timeZoneName={"UTC"}
+        />
+        <Button onPress={() => setCollapsed((prevCollapsed) => !prevCollapsed)}>
+          Add KPI
+        </Button>
+        {error && <Text>{error}</Text>}
+      </View>
       <Collapsible collapsed={collapsed}>
-        <KPIForm />
+        <KPIForm collapseForm={() => setCollapsed(true)} />
       </Collapsible>
-    </View>
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  kpiCard: {
-    flexDirection: "row",
-    justifyContent: "center",
-  },
-});

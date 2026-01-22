@@ -1,7 +1,10 @@
 import { AuthProvider, useAuth } from "@/util/auth";
 import { Stack, useRouter } from "expo-router";
 import { useEffect } from "react";
-import { PaperProvider } from "react-native-paper";
+import {
+  MD3LightTheme as DefaultTheme,
+  PaperProvider,
+} from "react-native-paper";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 function AuthGuard({ children }: any) {
@@ -19,10 +22,19 @@ function AuthGuard({ children }: any) {
   return <>{children}</>;
 }
 
+const CustomTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    // primary: "#e2adad",
+    // onPrimary: "#fc4103",
+  },
+};
+
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <PaperProvider>
+      <PaperProvider theme={CustomTheme}>
         <SafeAreaProvider>
           <AuthGuard>
             <Stack>
