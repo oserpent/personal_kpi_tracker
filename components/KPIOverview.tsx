@@ -1,22 +1,24 @@
 import { useAuth } from "@/util/auth";
 import { supabase } from "@/util/supabase-client";
-import { useEffect, useState } from "react";
+import Entypo from "@expo/vector-icons/Entypo";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { BarChart } from "react-native-chart-kit";
+import { BarChart } from "react-native-gifted-charts";
 import { Button, Text } from "react-native-paper";
 import { utcMidnight } from "./KPIDashboard";
 
 export default function KPIOverview() {
   function getSunday(d: Date) {
-    let day = d.getDay(),
-      diff = d.getDate() - day;
-    return new Date(d.setDate(diff));
+    let day = d.getUTCDay(),
+      diff = d.getUTCDate() - day;
+    return new Date(d.setUTCDate(diff));
   }
 
-  function getLocalDateString(d: Date) {
-    return `${d.getFullYear()}-${(d.getMonth() + 1)
+  function getUTCDateString(d: Date) {
+    return `${d.getUTCFullYear()}-${(d.getUTCMonth() + 1)
       .toString()
-      .padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`;
+      .padStart(2, "0")}-${d.getUTCDate().toString().padStart(2, "0")}`;
   }
 
   const getStartOfWeek = () => {
@@ -25,21 +27,22 @@ export default function KPIOverview() {
 
   const { user } = useAuth()!;
   const [startOfWeek, setStartOfWeek] = useState<Date>(getStartOfWeek);
-  const [weeklyKPIIndices, setWeeklyKPIIndices] = useState<any>({
-    labels: [],
-    datasets: [
-      {
-        data: [],
-      },
-    ],
-  });
+  const [weeklyKPIIndices, setWeeklyKPIIndices] = useState<any>([]);
   const [error, setError] = useState<string>("");
 
   const fetchWeeklyKPIs = async (startOfWeek: Date) => {
-    const weekDateStrings = [0, 1, 2, 3, 4, 5, 6].map((offset) => {
+    const weekDateStrings = [
+      { offset: 0, dow: "Sun" },
+      { offset: 1, dow: "Mon" },
+      { offset: 2, dow: "Tues" },
+      { offset: 3, dow: "Wed" },
+      { offset: 4, dow: "Thurs" },
+      { offset: 5, dow: "Fri" },
+      { offset: 6, dow: "Sat" },
+    ].map(({ offset, dow }) => {
       let day = new Date(startOfWeek.getTime());
       day.setDate(day.getDate() + offset);
-      return getLocalDateString(day);
+      return { date: getUTCDateString(day), dow };
     });
     if (user) {
       const { data: kpis, error } = await supabase
@@ -55,20 +58,23 @@ export default function KPIOverview() {
               quantity_completed,
               completed_at
             )
-            `
+            `,
         )
         .eq("user_id", user.id)
-        .in("kpi_completion.completed_at", weekDateStrings);
+        .in(
+          "kpi_completion.completed_at",
+          weekDateStrings.map((item) => item.date),
+        );
       if (error) {
         setError(error.message);
       }
       if (kpis) {
         const kpiWeekDateData = [];
-        for (let day of weekDateStrings) {
+        for (let { date, dow } of weekDateStrings) {
           let sum = 0;
           for (let kpi of kpis) {
             const dayKPICompletion = kpi.kpi_completion.find(
-              (kc) => kc.completed_at === day
+              (kc) => kc.completed_at === date,
             );
             if (dayKPICompletion) {
               const partialKPIIndex =
@@ -77,81 +83,54 @@ export default function KPIOverview() {
             }
             // no else because don't add if kpi_completion row does not exist
           }
-          kpiWeekDateData.push(sum / kpis.length);
+          kpiWeekDateData.push({ value: sum / kpis.length, label: dow });
         }
-        setWeeklyKPIIndices({
-          labels: weekDateStrings,
-          datasets: [
-            {
-              data: kpiWeekDateData,
-            },
-          ],
-        });
+        setWeeklyKPIIndices(kpiWeekDateData);
       }
     }
   };
 
-  useEffect(() => {
-    fetchWeeklyKPIs(startOfWeek);
-  }, [startOfWeek]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchWeeklyKPIs(startOfWeek);
+    }, [startOfWeek]),
+  );
 
   return (
     <View style={styles.outerView}>
-      <Button
-        onPress={() =>
-          setStartOfWeek((prevStartOfWeek) => {
-            let day = new Date(prevStartOfWeek.getTime());
-            day.setDate(day.getDate() - 7);
-            return day;
-          })
-        }
-      >
-        Previous
-      </Button>
-      <View>
-        <Text>
-          Week KPI Index:{" "}
-          {(
-            weeklyKPIIndices.datasets[0].data.reduce((a, b) => a + b, 0) /
-            weeklyKPIIndices.datasets[0].data.length
-          ).toFixed(2)}
-        </Text>
-        <BarChart
-          data={weeklyKPIIndices}
-          width={270}
-          height={220}
-          yAxisLabel="KPI Index: "
-          yAxisSuffix=""
-          chartConfig={{
-            backgroundColor: "#e26a00",
-            backgroundGradientFrom: "#fb8c00",
-            backgroundGradientTo: "#ffa726",
-            decimalPlaces: 2, // optional, defaults to 2dp
-            color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-            labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-            style: {
-              borderRadius: 16,
-            },
-            propsForDots: {
-              r: "6",
-              strokeWidth: "2",
-              stroke: "#ffa726",
-            },
-          }}
-          verticalLabelRotation={30}
-        />
+      <Text>
+        Week KPI Index:{" "}
+        {(
+          weeklyKPIIndices.reduce((a, b) => a + b.value, 0) /
+          weeklyKPIIndices.length
+        ).toFixed(2)}
+      </Text>
+      <View style={styles.weekNavigator}>
+        <Button
+          onPress={() =>
+            setStartOfWeek((prevStartOfWeek) => {
+              let day = new Date(prevStartOfWeek.getTime());
+              day.setDate(day.getDate() - 7);
+              return day;
+            })
+          }
+        >
+          <Entypo name="chevron-left" size={24} color="black" />
+        </Button>
+        <Text>Week of {getUTCDateString(startOfWeek)}</Text>
+        <Button
+          onPress={() =>
+            setStartOfWeek((prevStartOfWeek) => {
+              let day = new Date(prevStartOfWeek.getTime());
+              day.setDate(day.getDate() + 7);
+              return day;
+            })
+          }
+        >
+          <Entypo name="chevron-right" size={24} color="black" />
+        </Button>
       </View>
-      <Button
-        onPress={() =>
-          setStartOfWeek((prevStartOfWeek) => {
-            let day = new Date(prevStartOfWeek.getTime());
-            day.setDate(day.getDate() + 7);
-            return day;
-          })
-        }
-      >
-        Next
-      </Button>
+      <BarChart data={weeklyKPIIndices} maxValue={1} />
     </View>
   );
 }
@@ -163,6 +142,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     fontSize: 1,
     width: "100%",
+  },
+  weekNavigator: {
     flexDirection: "row",
+    alignItems: "center",
   },
 });

@@ -113,6 +113,16 @@ export default function KPICard({
       minWidth: 40,
       backgroundColor: "#A3FFAB",
     },
+    quantity: {
+      fontSize: 20,
+      width: 30,
+    },
+    divider: {
+      fontSize: 30,
+    },
+    quantifier: {
+      width: 50,
+    },
   });
 
   return (
@@ -139,13 +149,16 @@ export default function KPICard({
               }}
               style={styles.quantityTextInput}
             />
-            /{quantity}
           </Text>
           <Button onPress={increment} style={styles.incrementButton}>
             +
           </Button>
+          <Text style={styles.divider}>/</Text>
+          <Text style={styles.quantity}> {quantity}</Text>
         </View>
-        <Text>{quantifier}</Text>
+        <Text style={styles.quantifier}>
+          {quantifier !== "minutes" ? quantifier : "min"}
+        </Text>
       </View>
     </View>
   );
