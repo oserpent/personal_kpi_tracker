@@ -29,6 +29,7 @@ export default function KPIOverview() {
   const [startOfWeek, setStartOfWeek] = useState<Date>(getStartOfWeek);
   const [weeklyKPIIndices, setWeeklyKPIIndices] = useState<any>([]);
   const [error, setError] = useState<string>("");
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
   const fetchWeeklyKPIs = async (startOfWeek: Date) => {
     const weekDateStrings = [
@@ -130,7 +131,43 @@ export default function KPIOverview() {
           <Entypo name="chevron-right" size={24} color="black" />
         </Button>
       </View>
-      <BarChart data={weeklyKPIIndices} maxValue={1} />
+      <View>
+        <BarChart
+          data={weeklyKPIIndices}
+          maxValue={1}
+          formatYLabel={(label) => {
+            return Number(label).toFixed(1);
+          }}
+          barWidth={20}
+          onPress={(item, index) => {
+            setFocusedIndex((prevFocusedIndex) => {
+              setWeeklyKPIIndices((prevWeeklyKPIIndices) => {
+                let originalKPIIndices = [...prevWeeklyKPIIndices];
+                if (prevFocusedIndex !== null) {
+                  const { topLabelComponent: _, ...unLabeledOriginalBarData } =
+                    prevWeeklyKPIIndices[prevFocusedIndex];
+                  originalKPIIndices = [
+                    ...prevWeeklyKPIIndices.slice(0, prevFocusedIndex),
+                    unLabeledOriginalBarData,
+                    ...prevWeeklyKPIIndices.slice(prevFocusedIndex + 1),
+                  ];
+                }
+                return [
+                  ...originalKPIIndices.slice(0, index),
+                  {
+                    ...item,
+                    topLabelComponent: () => {
+                      return <Text>{item.value}</Text>;
+                    },
+                  },
+                  ...originalKPIIndices.slice(index + 1),
+                ];
+              });
+              return index;
+            });
+          }}
+        />
+      </View>
     </View>
   );
 }
